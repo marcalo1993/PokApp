@@ -45,7 +45,6 @@ export function getCurrentDayOfDecember(): number {
   return 31;
 }
 
-// Compatibilidad por si page.tsx u otros componentes la invocan
 export function getDailyPokemon(day: number, player: number): Pokemon {
   const seed = (day * 31 + player * 97) % UNCOMMON_POKEMON_IDS.length;
   return getPokemonById(UNCOMMON_POKEMON_IDS[seed]);
