@@ -1,103 +1,86 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import Auth from '@/components/Auth';
 import Calendar from '@/components/Calendar';
 import RatingSystem from '@/components/RatingSystem';
 import { getDailyPokemon } from '@/lib/pokemon';
-import { ArrowLeft, Volume2 } from 'lucide-react';
+import { LogOut } from 'lucide-react';
+
+// UID asignado al Jugador 1
+const PLAYER_1_UID = '8f29e7c1-6ba0-4ed1-b2f6-a8f7117db77e';
 
 export default function Home() {
-  const [selectedRole, setSelectedRole] = useState<'jugador1' | 'jugador2'>('jugador1');
-  const [activeDay, setActiveDay] = useState<number | null>(null);
-  const [pokemon, setPokemon] = useState<any | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [session, setSession] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   useEffect(() => {
-    if (activeDay !== null) {
-      setLoading(true);
-      getDailyPokemon(activeDay, selectedRole).then((data) => {
-        setPokemon(data);
-        setLoading(false);
-      });
-    }
-  }, [activeDay, selectedRole]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
 
-  const playCry = () => {
-    if (pokemon?.cryUrl) {
-      const audio = new Audio(pokemon.cryUrl);
-      audio.play().catch(() => {});
-    }
-  };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">
+        <p className="text-slate-400">Cargando PokApp...</p>
+      </div>
+    );
+  }
+
+  // Si no hay sesión iniciada, muestra el formulario de login
+  if (!session) {
+    return <Auth />;
+  }
+
+  // Identifica automáticamente si es Jugador 1 o Jugador 2
+  const currentPlayer = session.user.id === PLAYER_1_UID ? 1 : 2;
+  const pokemon = selectedDay ? getDailyPokemon(selectedDay) : null;
 
   return (
-    <main className="min-h-screen bg-slate-100 dark:bg-slate-900 py-8 px-4">
-      {/* Selector de Perfil */}
-      <div className="max-w-md mx-auto mb-6 bg-white dark:bg-gray-800 p-2 rounded-xl flex shadow-sm border border-gray-200 dark:border-gray-700">
+    <main className="min-h-screen bg-slate-900 text-white p-4 max-w-2xl mx-auto">
+      <header className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-amber-400">⚡ PokApp</h1>
+          <p className="text-xs text-slate-400">
+            Sesión: <span className="text-amber-300 font-semibold">{session.user.email}</span> (Jugador {currentPlayer})
+          </p>
+        </div>
         <button
-          onClick={() => setSelectedRole('jugador1')}
-          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
-            selectedRole === 'jugador1'
-              ? 'bg-red-500 text-white shadow-sm'
-              : 'text-gray-500 hover:text-gray-800 dark:text-gray-400'
-          }`}
+          onClick={() => supabase.auth.signOut()}
+          className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 px-3 py-2 rounded-lg border border-slate-700 transition cursor-pointer"
         >
-          👤 Jugador 1
+          <LogOut size={14} /> Salir
         </button>
-        <button
-          onClick={() => setSelectedRole('jugador2')}
-          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
-            selectedRole === 'jugador2'
-              ? 'bg-red-500 text-white shadow-sm'
-              : 'text-gray-500 hover:text-gray-800 dark:text-gray-400'
-          }`}
-        >
-          👤 Jugador 2
-        </button>
-      </div>
+      </header>
 
-      {/* Calendario vs Detalle del Pokémon */}
-      {activeDay === null ? (
-        <Calendar onSelectDay={(day) => setActiveDay(day)} />
+      {!selectedDay ? (
+        <Calendar onSelectDay={(day) => setSelectedDay(day)} />
       ) : (
-        <div className="max-w-lg mx-auto space-y-6">
+        <div className="space-y-6">
           <button
-            onClick={() => setActiveDay(null)}
-            className="flex items-center gap-2 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:text-red-500 transition-colors"
+            onClick={() => setSelectedDay(null)}
+            className="text-sm text-slate-400 hover:text-white mb-2 cursor-pointer"
           >
-            <ArrowLeft className="w-4 h-4" /> Volver al Calendario
+            ← Volver al calendario
           </button>
-
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-xl text-center space-y-4 border border-gray-100 dark:border-gray-700">
-            <span className="inline-block px-3 py-1 bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-full text-xs font-bold">
-              Día {activeDay} de Diciembre
-            </span>
-
-            {loading ? (
-              <div className="py-12 text-gray-400 animate-pulse">Cargando Pokémon...</div>
-            ) : pokemon ? (
-              <>
-                <img
-                  src={pokemon.sprite}
-                  alt={pokemon.name}
-                  className="w-48 h-48 mx-auto drop-shadow-md hover:scale-105 transition-transform"
-                />
-                <h2 className="text-2xl font-black capitalize text-gray-800 dark:text-white">
-                  {pokemon.name}
-                </h2>
-
-                {pokemon.cryUrl && (
-                  <button
-                    onClick={playCry}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 text-xs font-bold rounded-full hover:bg-slate-200 transition-colors"
-                  >
-                    <Volume2 className="w-4 h-4 text-red-500" /> Escuchar grito original
-                  </button>
-                )}
-              </>
-            ) : null}
-          </div>
-
-          <RatingSystem day={activeDay} myRole={selectedRole} />
+          
+          {pokemon && (
+            <RatingSystem
+              day={selectedDay}
+              pokemon={pokemon}
+              currentPlayer={currentPlayer}
+            />
+          )}
         </div>
       )}
     </main>
