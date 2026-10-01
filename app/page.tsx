@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Auth from '@/components/Auth';
 import Calendar from '@/components/Calendar';
 import RatingSystem from '@/components/RatingSystem';
-import { LogOut, RotateCcw, ArrowLeft, Calendar as CalendarIcon } from 'lucide-react';
+import { LogOut, RotateCcw, ArrowLeft } from 'lucide-react';
 
 export default function Home() {
   const [session, setSession] = useState<any>(null);
@@ -80,19 +80,19 @@ export default function Home() {
             {selectedDay === null && (
               <button
                 onClick={handleReset}
-                className="flex items-center gap-2 px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:border-rose-500/50 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-sm active:scale-95"
+                className="group flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-rose-950/80 to-rose-900/50 hover:from-rose-900 hover:to-rose-800 text-rose-200 border border-rose-700/50 hover:border-rose-500 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-lg shadow-rose-950/40 active:scale-95"
                 title="Reiniciar partida y generar nuevos Pokémon"
               >
-                <RotateCcw size={15} />
+                <RotateCcw size={15} className="transition-transform group-hover:-rotate-90 text-rose-400" />
                 <span>Reset Partida</span>
               </button>
             )}
 
             <button
               onClick={() => supabase.auth.signOut()}
-              className="flex items-center gap-2 px-3.5 py-2 bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white border border-slate-700/60 hover:border-slate-600 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-sm active:scale-95"
+              className="group flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 text-slate-200 hover:text-white border border-slate-700/80 hover:border-slate-500 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-lg shadow-black/40 active:scale-95"
             >
-              <LogOut size={15} className="text-slate-400" />
+              <LogOut size={15} className="transition-transform group-hover:translate-x-0.5 text-slate-400 group-hover:text-amber-400" />
               <span>Salir</span>
             </button>
           </div>
@@ -105,7 +105,7 @@ export default function Home() {
           <div className="space-y-4">
             <button
               onClick={() => setSelectedDay(null)}
-              className="group flex items-center gap-2 px-4 py-2.5 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer border border-slate-800 hover:border-slate-700 shadow-md active:scale-95"
+              className="group flex items-center gap-2.5 px-4.5 py-2.5 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer border border-slate-700/80 hover:border-amber-500/50 shadow-lg shadow-black/30 active:scale-95"
             >
               <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1 text-amber-400" />
               <span>Volver al Calendario</span>
