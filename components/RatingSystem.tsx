@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Pokemon, getDailyPokemon } from '@/lib/pokemon';
+import { Pokemon, getPokemonById, getRandomPokemonId } from '@/lib/pokemon';
 import { Star } from 'lucide-react';
 
 interface RatingSystemProps {
@@ -11,6 +11,7 @@ interface RatingSystemProps {
 }
 
 export default function RatingSystem({ day, currentPlayer }: RatingSystemProps) {
+  const [pokemon, setPokemon] = useState<Pokemon | null>(null);
   const [imitation, setImitation] = useState(0);
   const [movement, setMovement] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -22,49 +23,74 @@ export default function RatingSystem({ day, currentPlayer }: RatingSystemProps) 
     p2_movement: 0,
   });
 
-  // El Pokémon del día se calcula de forma fija y distinta para cada jugador
-  const pokemon: Pokemon = getDailyPokemon(day, currentPlayer);
-
   useEffect(() => {
-    async function loadDayRatings() {
+    async function loadDayData() {
       setLoading(true);
 
+      // Comprobamos si el día ya tiene registro en Supabase
       const { data } = await supabase
         .from('ratings')
         .select('*')
         .eq('day', day)
         .single();
 
-      if (data) {
+      let p1Id: number;
+      let p2Id: number;
+
+      // Obtener todos los Pokémon ya usados en otros días para evitar repeticiones innecesarias
+      const { data: existingRows } = await supabase.from('ratings').select('p1_pokemon_id, p2_pokemon_id');
+      const usedIds: number[] = [];
+      if (existingRows) {
+        existingRows.forEach((r: any) => {
+          if (r.p1_pokemon_id) usedIds.push(r.p1_pokemon_id);
+          if (r.p2_pokemon_id) usedIds.push(r.p2_pokemon_id);
+        });
+      }
+
+      if (data && data.p1_pokemon_id && data.p2_pokemon_id) {
+        // Si ya existen Pokémon guardados para este día, los usamos (persistencia)
+        p1Id = data.p1_pokemon_id;
+        p2Id = data.p2_pokemon_id;
+
         setRatingsData({
           p1_imitation: data.p1_imitation || 0,
           p1_movement: data.p1_movement || 0,
           p2_imitation: data.p2_imitation || 0,
           p2_movement: data.p2_movement || 0,
         });
-
-        if (currentPlayer === 1) {
-          setImitation(data.p1_imitation || 0);
-          setMovement(data.p1_movement || 0);
-        } else {
-          setImitation(data.p2_imitation || 0);
-          setMovement(data.p2_movement || 0);
-        }
       } else {
-        // Inicializar fila si no existe
+        // Si no existen, generamos dos Pokémon al azar totalmente distintos entre sí y del resto de días
+        p1Id = getRandomPokemonId(usedIds);
+        p2Id = getRandomPokemonId([...usedIds, p1Id]);
+
+        // Guardamos los nuevos Pokémon asignados en la base de datos
         await supabase.from('ratings').upsert({
           day,
-          p1_imitation: 0,
-          p1_movement: 0,
-          p2_imitation: 0,
-          p2_movement: 0,
+          p1_pokemon_id: p1Id,
+          p2_pokemon_id: p2Id,
+          p1_imitation: data?.p1_imitation || 0,
+          p1_movement: data?.p1_movement || 0,
+          p2_imitation: data?.p2_imitation || 0,
+          p2_movement: data?.p2_movement || 0,
         });
+      }
+
+      // Asignar el Pokémon correspondiente al jugador actual
+      const activePokemonId = currentPlayer === 1 ? p1Id : p2Id;
+      setPokemon(getPokemonById(activePokemonId));
+
+      if (currentPlayer === 1) {
+        setImitation(data?.p1_imitation || 0);
+        setMovement(data?.p1_movement || 0);
+      } else {
+        setImitation(data?.p2_imitation || 0);
+        setMovement(data?.p2_movement || 0);
       }
 
       setLoading(false);
     }
 
-    loadDayRatings();
+    loadDayData();
   }, [day, currentPlayer]);
 
   const handleRate = async (type: 'imitation' | 'movement', value: number) => {
@@ -90,8 +116,8 @@ export default function RatingSystem({ day, currentPlayer }: RatingSystemProps) 
     await supabase.from('ratings').update(updatePayload).eq('day', day);
   };
 
-  if (loading) {
-    return <div className="text-center py-12 text-slate-400">Cargando puntuaciones del día {day}...</div>;
+  if (loading || !pokemon) {
+    return <div className="text-center py-12 text-slate-400">Cargando Pokémon del día {day}...</div>;
   }
 
   const playerName = currentPlayer === 1 ? 'Iván' : 'María';
