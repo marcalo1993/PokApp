@@ -27,17 +27,17 @@ export default function RatingSystem({ day, currentPlayer }: RatingSystemProps) 
     async function loadDayData() {
       setLoading(true);
 
-      // Comprobamos si el día ya tiene registro en Supabase
+      // Buscar si ya existe el registro del día en Supabase
       const { data } = await supabase
         .from('ratings')
         .select('*')
         .eq('day', day)
-        .single();
+        .maybeSingle();
 
       let p1Id: number;
       let p2Id: number;
 
-      // Obtener todos los Pokémon ya usados en otros días para evitar repeticiones innecesarias
+      // Obtener Pokémon ya usados en otros días para evitar repeticiones
       const { data: existingRows } = await supabase.from('ratings').select('p1_pokemon_id, p2_pokemon_id');
       const usedIds: number[] = [];
       if (existingRows) {
@@ -48,7 +48,6 @@ export default function RatingSystem({ day, currentPlayer }: RatingSystemProps) 
       }
 
       if (data && data.p1_pokemon_id && data.p2_pokemon_id) {
-        // Si ya existen Pokémon guardados para este día, los usamos (persistencia)
         p1Id = data.p1_pokemon_id;
         p2Id = data.p2_pokemon_id;
 
@@ -59,11 +58,11 @@ export default function RatingSystem({ day, currentPlayer }: RatingSystemProps) 
           p2_movement: data.p2_movement || 0,
         });
       } else {
-        // Si no existen, generamos dos Pokémon al azar totalmente distintos entre sí y del resto de días
+        // Si no existen, generamos dos Pokémon al azar distintos entre sí y del resto de días
         p1Id = getRandomPokemonId(usedIds);
         p2Id = getRandomPokemonId([...usedIds, p1Id]);
 
-        // Guardamos los nuevos Pokémon asignados en la base de datos
+        // Guardamos ambos en la fila del día
         await supabase.from('ratings').upsert({
           day,
           p1_pokemon_id: p1Id,
@@ -75,7 +74,7 @@ export default function RatingSystem({ day, currentPlayer }: RatingSystemProps) 
         });
       }
 
-      // Asignar el Pokémon correspondiente al jugador actual
+      // Asignar el Pokémon que le toca ver al jugador actual
       const activePokemonId = currentPlayer === 1 ? p1Id : p2Id;
       setPokemon(getPokemonById(activePokemonId));
 
