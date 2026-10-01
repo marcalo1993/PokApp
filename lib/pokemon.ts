@@ -38,12 +38,13 @@ export function getCurrentDayOfDecember(): number {
   return 31;
 }
 
-// Asignación determinista garantizando que Iván (player 1) y María (player 2) 
-// tengan Pokémon diferentes para un mismo día, pero persistentes entre recargas.
-export function getDailyPokemon(day: number, player: number): Pokemon {
-  // Usamos coeficientes distintos para Iván (player 1) y María (player 2)
-  const multiplier = player === 1 ? 37 : 73;
-  const index = (day * multiplier + (player * 19)) % UNCOMMON_POKEMON_IDS.length;
-  const pokemonId = UNCOMMON_POKEMON_IDS[index];
-  return getPokemonById(pokemonId);
+// Selecciona un ID aleatorio excluyendo los ya usados en la partida actual
+export function getRandomPokemonId(excludeIds: number[] = []): number {
+  const available = UNCOMMON_POKEMON_IDS.filter(id => !excludeIds.includes(id));
+  if (available.length === 0) {
+    const randomIndex = Math.floor(Math.random() * UNCOMMON_POKEMON_IDS.length);
+    return UNCOMMON_POKEMON_IDS[randomIndex];
+  }
+  const randomIndex = Math.floor(Math.random() * available.length);
+  return available[randomIndex];
 }
