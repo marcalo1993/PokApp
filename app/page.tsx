@@ -5,16 +5,15 @@ import { supabase } from '@/lib/supabase';
 import Auth from '@/components/Auth';
 import Calendar from '@/components/Calendar';
 import RatingSystem from '@/components/RatingSystem';
-import { getDailyPokemon } from '@/lib/pokemon';
 import { LogOut, RotateCcw } from 'lucide-react';
 
 const PLAYER_1_UID = 'c7da1c58-52ad-42eb-8e31-962d33435328';
+const PLAYER_2_UID = '77ba133a-97ab-43aa-a82f-870633b435328';
 
 export default function Home() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -22,50 +21,20 @@ export default function Home() {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (!session) {
-        setSelectedDay(null);
-      }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleSignOut = async () => {
-    setSelectedDay(null);
-    await supabase.auth.signOut();
-  };
-
-  // Función para reiniciar todas las valoraciones del calendario
-  const handleResetCalendar = async () => {
-    if (!window.confirm('¿Estás seguro de que quieres reiniciar todas las puntuaciones del calendario?')) {
-      return;
-    }
-
-    setResetting(true);
-    // Borra todas las filas de la tabla ratings en Supabase
-    const { error } = await supabase
-      .from('ratings')
-      .delete()
-      .neq('day', 0); // Borra todos los días
-
-    if (error) {
-      console.error('Error al reiniciar el calendario:', error.message);
-      alert('Hubo un error al reiniciar.');
-    } else {
-      alert('¡Calendario reiniciado con éxito!');
-      setSelectedDay(null);
-      // Forzar recarga o refresco de estado si es necesario
-      window.location.reload();
-    }
-    setResetting(false);
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">
-        <p className="text-slate-400">Cargando PokApp...</p>
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        <p className="text-amber-400 font-medium animate-pulse">Cargando PokApp...</p>
       </div>
     );
   }
@@ -74,56 +43,80 @@ export default function Home() {
     return <Auth />;
   }
 
-  const currentPlayer = session.user.id === PLAYER_1_UID ? 1 : 2;
-  const pokemon = selectedDay ? getDailyPokemon(selectedDay, currentPlayer) : null;
+  const userEmail = session.user.email;
+  const userId = session.user.id;
+
+  // Determinar jugador según UID exacto
+  let currentPlayer = 1;
+  if (userId === PLAYER_2_UID) {
+    currentPlayer = 2;
+  } else if (userId === PLAYER_1_UID) {
+    currentPlayer = 1;
+  } else {
+    // Fallback por si acaso según el correo
+    currentPlayer = userEmail?.includes('maria') ? 2 : 1;
+  }
+
+  const handleReset = async () => {
+    if (confirm('¿Seguro que quieres reiniciar todas las puntuaciones y generar nuevos Pokémon?')) {
+      await supabase.from('ratings').delete().neq('day', 0);
+      window.location.reload();
+    }
+  };
 
   return (
-    <main className="min-h-screen bg-slate-900 text-white p-4 max-w-2xl mx-auto">
-      <header className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-amber-400">⚡ PokApp</h1>
-          <p className="text-xs text-slate-400">
-            Sesión: <span className="text-amber-300 font-semibold">{session.user.email}</span> (Jugador {currentPlayer})
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleResetCalendar}
-            disabled={resetting}
-            title="Reiniciar todo el calendario"
-            className="flex items-center gap-1 bg-red-900/40 hover:bg-red-900/60 text-xs text-red-300 px-3 py-2 rounded-lg border border-red-800/60 transition cursor-pointer"
-          >
-            <RotateCcw size={14} /> Reset
-          </button>
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 px-3 py-2 rounded-lg border border-slate-700 transition cursor-pointer"
-          >
-            <LogOut size={14} /> Salir
-          </button>
-        </div>
-      </header>
+    <main className="min-h-screen bg-slate-950 text-white p-4 md:p-8">
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Cabecera */}
+        <header className="flex flex-col sm:flex-row justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 gap-4 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center font-black text-slate-950 text-xl shadow">
+              ⚡
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-white">Pokémon Advent Calendar</h1>
+              <p className="text-xs text-slate-400">
+                Jugador actual: <span className="text-amber-400 font-semibold">{currentPlayer === 1 ? 'Iván' : 'María'}</span> ({userEmail})
+              </p>
+            </div>
+          </div>
 
-      {!selectedDay ? (
-        <Calendar onSelectDay={(day) => setSelectedDay(day)} />
-      ) : (
-        <div className="space-y-6">
-          <button
-            onClick={() => setSelectedDay(null)}
-            className="text-sm text-slate-400 hover:text-white mb-2 cursor-pointer"
-          >
-            ← Volver al calendario
-          </button>
-          
-          {pokemon && (
-            <RatingSystem
-              day={selectedDay}
-              pokemon={pokemon}
-              currentPlayer={currentPlayer}
-            />
-          )}
-        </div>
-      )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-1.5 px-3 py-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/50 rounded-xl text-xs font-medium transition cursor-pointer"
+              title="Reiniciar partida y generar nuevos Pokémon"
+            >
+              <RotateCcw size={14} />
+              Reset
+            </button>
+
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition cursor-pointer"
+            >
+              <LogOut size={14} />
+              Salir
+            </button>
+          </div>
+        </header>
+
+        {/* Contenido principal: Calendario o Pantalla de Puntuación del Día */}
+        {selectedDay === null ? (
+          <Calendar onSelectDay={(day) => setSelectedDay(day)} />
+        ) : (
+          <div className="space-y-4">
+            <button
+              onClick={() => setSelectedDay(null)}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition cursor-pointer border border-slate-700"
+            >
+              ← Volver al Calendario
+            </button>
+
+            <RatingSystem day={selectedDay} currentPlayer={currentPlayer} />
+          </div>
+        )}
+      </div>
     </main>
   );
 }
