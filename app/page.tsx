@@ -8,8 +8,8 @@ import RatingSystem from '@/components/RatingSystem';
 import { getDailyPokemon } from '@/lib/pokemon';
 import { LogOut } from 'lucide-react';
 
-// UID asignado al Jugador 1
-const PLAYER_1_UID = '8f29e7c1-6ba0-4ed1-b2f6-a8f7117db77e';
+// Nuevo UID asignado al Jugador 1
+const PLAYER_1_UID = 'c7da1c58-52ad-42eb-8e31-962d33435328';
 
 export default function Home() {
   const [session, setSession] = useState<any>(null);
