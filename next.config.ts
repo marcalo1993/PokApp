@@ -1,14 +1,7 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
-const nextConfig: NextConfig = {
-  typescript: {
-    // Ignora errores estrictos de tipos durante el build
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    // Ignora advertencias del linter durante el build
-    ignoreDuringBuilds: true,
-  },
+const config: NextConfig = {
+  // Mantén tus configuraciones actuales aquí si tienes alguna otra, o déjalo vacío así:
 };
 
-export default nextConfig;
+export default config;
