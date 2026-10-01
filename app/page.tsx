@@ -6,7 +6,7 @@ import Auth from '@/components/Auth';
 import Calendar from '@/components/Calendar';
 import RatingSystem from '@/components/RatingSystem';
 import { getDailyPokemon } from '@/lib/pokemon';
-import { LogOut } from 'lucide-react';
+import { LogOut, RotateCcw } from 'lucide-react';
 
 const PLAYER_1_UID = 'c7da1c58-52ad-42eb-8e31-962d33435328';
 
@@ -14,6 +14,7 @@ export default function Home() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -23,7 +24,6 @@ export default function Home() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      // Resetea el día seleccionado al cambiar o cerrar la sesión
       if (!session) {
         setSelectedDay(null);
       }
@@ -33,8 +33,33 @@ export default function Home() {
   }, []);
 
   const handleSignOut = async () => {
-    setSelectedDay(null); // Limpia la vista del día antes de cerrar sesión
+    setSelectedDay(null);
     await supabase.auth.signOut();
+  };
+
+  // Función para reiniciar todas las valoraciones del calendario
+  const handleResetCalendar = async () => {
+    if (!window.confirm('¿Estás seguro de que quieres reiniciar todas las puntuaciones del calendario?')) {
+      return;
+    }
+
+    setResetting(true);
+    // Borra todas las filas de la tabla ratings en Supabase
+    const { error } = await supabase
+      .from('ratings')
+      .delete()
+      .neq('day', 0); // Borra todos los días
+
+    if (error) {
+      console.error('Error al reiniciar el calendario:', error.message);
+      alert('Hubo un error al reiniciar.');
+    } else {
+      alert('¡Calendario reiniciado con éxito!');
+      setSelectedDay(null);
+      // Forzar recarga o refresco de estado si es necesario
+      window.location.reload();
+    }
+    setResetting(false);
   };
 
   if (loading) {
@@ -50,7 +75,7 @@ export default function Home() {
   }
 
   const currentPlayer = session.user.id === PLAYER_1_UID ? 1 : 2;
-  const pokemon = selectedDay ? getDailyPokemon(selectedDay) : null;
+  const pokemon = selectedDay ? getDailyPokemon(selectedDay, currentPlayer) : null;
 
   return (
     <main className="min-h-screen bg-slate-900 text-white p-4 max-w-2xl mx-auto">
@@ -61,12 +86,22 @@ export default function Home() {
             Sesión: <span className="text-amber-300 font-semibold">{session.user.email}</span> (Jugador {currentPlayer})
           </p>
         </div>
-        <button
-          onClick={handleSignOut}
-          className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 px-3 py-2 rounded-lg border border-slate-700 transition cursor-pointer"
-        >
-          <LogOut size={14} /> Salir
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleResetCalendar}
+            disabled={resetting}
+            title="Reiniciar todo el calendario"
+            className="flex items-center gap-1 bg-red-900/40 hover:bg-red-900/60 text-xs text-red-300 px-3 py-2 rounded-lg border border-red-800/60 transition cursor-pointer"
+          >
+            <RotateCcw size={14} /> Reset
+          </button>
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 px-3 py-2 rounded-lg border border-slate-700 transition cursor-pointer"
+          >
+            <LogOut size={14} /> Salir
+          </button>
+        </div>
       </header>
 
       {!selectedDay ? (
