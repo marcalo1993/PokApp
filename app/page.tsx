@@ -57,7 +57,7 @@ export default function Home() {
   }
 
   const handleReset = async () => {
-    if (confirm('¿Seguro que quieres reiniciar todas las puntuaciones?')) {
+    if (confirm('¿Seguro que quieres reiniciar la partida? Se borrarán todas las puntuaciones y se sortearán nuevos Pokémon.')) {
       await supabase.from('ratings').delete().neq('day', 0);
       window.location.reload();
     }
@@ -81,12 +81,11 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* El botón de Reset solo se muestra cuando estás en el menú principal (selectedDay === null) */}
             {selectedDay === null && (
               <button
                 onClick={handleReset}
                 className="flex items-center gap-1.5 px-3 py-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/50 rounded-xl text-xs font-medium transition cursor-pointer"
-                title="Reiniciar todas las puntuaciones"
+                title="Reiniciar partida y generar nuevos Pokémon"
               >
                 <RotateCcw size={14} />
                 Reset Partida
