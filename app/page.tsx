@@ -7,9 +7,6 @@ import Calendar from '@/components/Calendar';
 import RatingSystem from '@/components/RatingSystem';
 import { LogOut, RotateCcw } from 'lucide-react';
 
-const PLAYER_1_UID = 'c7da1c58-52ad-42eb-8e31-962d33435328';
-const PLAYER_2_UID = '77ba133a-97ab-43aa-a82f-870633b435328';
-
 export default function Home() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -44,16 +41,12 @@ export default function Home() {
     return <Auth />;
   }
 
-  const userEmail = session.user.email;
-  const userId = session.user.id;
+  const userEmail = session.user.email?.toLowerCase() || '';
 
-  let currentPlayer = 1;
-  if (userId === PLAYER_2_UID) {
-    currentPlayer = 2;
-  } else if (userId === PLAYER_1_UID) {
-    currentPlayer = 1;
-  } else {
-    currentPlayer = userEmail?.includes('maria') ? 2 : 1;
+  // Detección limpia basada en el correo electrónico
+  let currentPlayer = 1; // Por defecto Iván
+  if (userEmail.includes('maria')) {
+    currentPlayer = 2; // Si el email contiene "maria", es la jugadora 2
   }
 
   const handleReset = async () => {
