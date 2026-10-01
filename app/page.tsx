@@ -26,6 +26,8 @@ export default function Home() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setLoading(false);
+      // Al cambiar de sesión o iniciar sesión, aseguramos volver al menú principal
+      setSelectedDay(null);
     });
 
     return () => subscription.unsubscribe();
@@ -46,19 +48,17 @@ export default function Home() {
   const userEmail = session.user.email;
   const userId = session.user.id;
 
-  // Determinar jugador según UID exacto
   let currentPlayer = 1;
   if (userId === PLAYER_2_UID) {
     currentPlayer = 2;
   } else if (userId === PLAYER_1_UID) {
     currentPlayer = 1;
   } else {
-    // Fallback por si acaso según el correo
     currentPlayer = userEmail?.includes('maria') ? 2 : 1;
   }
 
   const handleReset = async () => {
-    if (confirm('¿Seguro que quieres reiniciar todas las puntuaciones y generar nuevos Pokémon?')) {
+    if (confirm('¿Seguro que quieres reiniciar todas las puntuaciones y generar nuevos Pokémon para todos los días?')) {
       await supabase.from('ratings').delete().neq('day', 0);
       window.location.reload();
     }
@@ -67,7 +67,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 text-white p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        {/* Cabecera */}
+        {/* Cabecera (El botón Reset solo aparece aquí) */}
         <header className="flex flex-col sm:flex-row justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 gap-4 shadow-lg">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center font-black text-slate-950 text-xl shadow">
@@ -88,7 +88,7 @@ export default function Home() {
               title="Reiniciar partida y generar nuevos Pokémon"
             >
               <RotateCcw size={14} />
-              Reset
+              Reset Partida
             </button>
 
             <button
@@ -101,7 +101,7 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Contenido principal: Calendario o Pantalla de Puntuación del Día */}
+        {/* Contenido principal */}
         {selectedDay === null ? (
           <Calendar onSelectDay={(day) => setSelectedDay(day)} />
         ) : (
