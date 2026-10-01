@@ -6,214 +6,143 @@ import { Star } from 'lucide-react';
 
 interface RatingSystemProps {
   day: number;
-  myRole: 'jugador1' | 'jugador2';
+  pokemon: {
+    id: number;
+    name: string;
+    image: string;
+  };
+  currentPlayer: number;
 }
 
-interface RatingData {
-  sound_score: number;
-  movement_score: number;
-  from_player: string;
-}
+export default function RatingSystem({ day, pokemon, currentPlayer }: RatingSystemProps) {
+  const [ratingPlayer1, setRatingPlayer1] = useState<number>(0);
+  const [ratingPlayer2, setRatingPlayer2] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [saving, setSaving] = useState<boolean>(false);
 
-export default function RatingSystem({ day, myRole }: RatingSystemProps) {
-  const targetPlayer = myRole === 'jugador1' ? 'jugador2' : 'jugador1';
-
-  const [soundScore, setSoundScore] = useState<number>(0);
-  const [movementScore, setMovementScore] = useState<number>(0);
-  const [hasVoted, setHasVoted] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [receivedRating, setReceivedRating] = useState<RatingData | null>(null);
-
+  // Cargar las puntuaciones guardadas de Supabase para este día
   useEffect(() => {
-    async function loadRatings() {
-      if (!supabase) return;
-
-      const { data: myVote } = await supabase
+    async function fetchRatings() {
+      setLoading(true);
+      const { data, error } = await supabase
         .from('ratings')
         .select('*')
         .eq('day', day)
-        .eq('from_player', myRole)
         .maybeSingle();
 
-      if (myVote) {
-        setSoundScore(myVote.sound_score);
-        setMovementScore(myVote.movement_score);
-        setHasVoted(true);
+      if (data && !error) {
+        setRatingPlayer1(data.player1_rating || 0);
+        setRatingPlayer2(data.player2_rating || 0);
+      } else {
+        setRatingPlayer1(0);
+        setRatingPlayer2(0);
       }
-
-      const { data: partnerVote } = await supabase
-        .from('ratings')
-        .select('*')
-        .eq('day', day)
-        .eq('from_player', targetPlayer)
-        .maybeSingle();
-
-      if (partnerVote) {
-        setReceivedRating(partnerVote);
-      }
-    }
-
-    loadRatings();
-
-    if (!supabase) return;
-
-    const channel = supabase
-      .channel(`ratings_day_${day}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'ratings',
-          filter: `day=eq.${day}`,
-        },
-        (payload) => {
-          const newVote = payload.new as RatingData;
-          if (newVote.from_player === targetPlayer) {
-            setReceivedRating(newVote);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [day, myRole, targetPlayer]);
-
-  async function submitRating() {
-    if (soundScore === 0 || movementScore === 0) {
-      alert('Por favor selecciona una puntuación para Sonido y Movimiento');
-      return;
-    }
-
-    setLoading(true);
-
-    if (!supabase) {
-      alert('Supabase no está configurado aún');
       setLoading(false);
-      return;
     }
 
-    const { error } = await supabase.from('ratings').insert({
-      day,
-      from_player: myRole,
-      to_player: targetPlayer,
-      sound_score: soundScore,
-      movement_score: movementScore,
-    });
+    fetchRatings();
+  }, [day]);
 
-    setLoading(false);
+  // Guardar la puntuación del jugador actual
+  const handleRate = async (stars: number) => {
+    setSaving(true);
+    
+    const newP1 = currentPlayer === 1 ? stars : ratingPlayer1;
+    const newP2 = currentPlayer === 2 ? stars : ratingPlayer2;
+
+    if (currentPlayer === 1) setRatingPlayer1(stars);
+    if (currentPlayer === 2) setRatingPlayer2(stars);
+
+    const { error } = await supabase
+      .from('ratings')
+      .upsert(
+        {
+          day: day,
+          pokemon_id: pokemon.id,
+          player1_rating: newP1,
+          player2_rating: newP2,
+        },
+        { onConflict: 'day' }
+      );
 
     if (error) {
-      console.error(error);
-      alert('Error al guardar la puntuación');
-    } else {
-      setHasVoted(true);
+      console.error('Error al guardar la puntuación:', error.message);
     }
-  }
-
-  const RenderStars = ({
-    value,
-    onChange,
-    disabled = false,
-  }: {
-    value: number;
-    onChange?: (v: number) => void;
-    disabled?: boolean;
-  }) => (
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star}
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange && onChange(star)}
-          className={`p-1 transition-all ${
-            disabled ? 'cursor-default' : 'hover:scale-110'
-          }`}
-        >
-          <Star
-            className={`w-7 h-7 ${
-              star <= value
-                ? 'fill-yellow-400 text-yellow-400'
-                : 'text-gray-300 dark:text-gray-600'
-            }`}
-          />
-        </button>
-      ))}
-    </div>
-  );
+    setSaving(false);
+  };
 
   return (
-    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md mx-auto space-y-6 border border-gray-100 dark:border-gray-700">
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold text-center text-red-500">
-          🎯 Evalúa la imitación de tu Pareja
-        </h3>
-
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Sonido / Onomatopeya:</p>
-          <RenderStars
-            value={soundScore}
-            onChange={setSoundScore}
-            disabled={hasVoted}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Movimiento / Andares:</p>
-          <RenderStars
-            value={movementScore}
-            onChange={setMovementScore}
-            disabled={hasVoted}
-          />
-        </div>
-
-        {!hasVoted ? (
-          <button
-            onClick={submitRating}
-            disabled={loading}
-            className="w-full py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-all shadow-md disabled:opacity-50"
-          >
-            {loading ? 'Guardando...' : 'Enviar Puntuación'}
-          </button>
-        ) : (
-          <p className="text-center text-xs font-semibold text-green-500 bg-green-50 dark:bg-green-950 p-2 rounded-lg">
-            ✓ ¡Ya has enviado tu puntuación de hoy!
-          </p>
-        )}
+    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl max-w-md mx-auto text-center space-y-6">
+      <div className="space-y-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">Día {day}</span>
+        <h2 className="text-2xl font-bold capitalize">{pokemon.name}</h2>
       </div>
 
-      <hr className="border-gray-200 dark:border-gray-700" />
+      <div className="relative w-48 h-48 mx-auto flex items-center justify-center bg-slate-900/50 rounded-xl p-4">
+        <img
+          src={pokemon.image}
+          alt={pokemon.name}
+          className="w-full h-full object-contain filter drop-shadow-lg"
+        />
+      </div>
 
-      <div className="space-y-3 text-center">
-        <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
-          🏆 Tu Puntuación de Hoy
-        </h4>
-
-        {receivedRating ? (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl space-y-2 border border-yellow-200 dark:border-yellow-700">
-            <p className="text-sm font-medium">¡Tu pareja te ha puntuado!</p>
-            <div className="flex justify-around text-sm">
-              <div>
-                <p className="text-xs text-gray-500">Sonido</p>
-                <p className="text-lg font-bold">⭐ {receivedRating.sound_score}/5</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Movimiento</p>
-                <p className="text-lg font-bold">⭐ {receivedRating.movement_score}/5</p>
-              </div>
+      {loading ? (
+        <p className="text-sm text-slate-400">Cargando puntuaciones...</p>
+      ) : (
+        <div className="space-y-6 pt-2">
+          {/* Valoración del Jugador 1 */}
+          <div className={`p-4 rounded-xl border transition ${currentPlayer === 1 ? 'bg-slate-700/50 border-amber-500/50' : 'bg-slate-900/30 border-slate-800'}`}>
+            <p className="text-sm font-semibold mb-2 text-slate-300">
+              Jugador 1 {currentPlayer === 1 && <span className="text-amber-400 text-xs">(Tú)</span>}
+            </p>
+            <div className="flex justify-center gap-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={`p1-${star}`}
+                  disabled={currentPlayer !== 1 || saving}
+                  onClick={() => handleRate(star)}
+                  className={`p-1 transition ${currentPlayer === 1 ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}`}
+                >
+                  <Star
+                    size={28}
+                    className={
+                      star <= ratingPlayer1
+                        ? 'fill-amber-400 text-amber-400'
+                        : 'text-slate-600'
+                    }
+                  />
+                </button>
+              ))}
             </div>
           </div>
-        ) : (
-          <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-            <p className="text-xs text-gray-500 animate-pulse">
-              Esperando a que tu pareja te evalúe... ⏳
+
+          {/* Valoración del Jugador 2 */}
+          <div className={`p-4 rounded-xl border transition ${currentPlayer === 2 ? 'bg-slate-700/50 border-amber-500/50' : 'bg-slate-900/30 border-slate-800'}`}>
+            <p className="text-sm font-semibold mb-2 text-slate-300">
+              Jugador 2 {currentPlayer === 2 && <span className="text-amber-400 text-xs">(Tú)</span>}
             </p>
+            <div className="flex justify-center gap-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={`p2-${star}`}
+                  disabled={currentPlayer !== 2 || saving}
+                  onClick={() => handleRate(star)}
+                  className={`p-1 transition ${currentPlayer === 2 ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}`}
+                >
+                  <Star
+                    size={28}
+                    className={
+                      star <= ratingPlayer2
+                        ? 'fill-amber-400 text-amber-400'
+                        : 'text-slate-600'
+                    }
+                  />
+                </button>
+              ))}
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
