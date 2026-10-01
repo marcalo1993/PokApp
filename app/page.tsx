@@ -8,7 +8,6 @@ import RatingSystem from '@/components/RatingSystem';
 import { getDailyPokemon } from '@/lib/pokemon';
 import { LogOut } from 'lucide-react';
 
-// Nuevo UID asignado al Jugador 1
 const PLAYER_1_UID = 'c7da1c58-52ad-42eb-8e31-962d33435328';
 
 export default function Home() {
@@ -24,10 +23,19 @@ export default function Home() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      // Resetea el día seleccionado al cambiar o cerrar la sesión
+      if (!session) {
+        setSelectedDay(null);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const handleSignOut = async () => {
+    setSelectedDay(null); // Limpia la vista del día antes de cerrar sesión
+    await supabase.auth.signOut();
+  };
 
   if (loading) {
     return (
@@ -37,12 +45,10 @@ export default function Home() {
     );
   }
 
-  // Si no hay sesión iniciada, muestra el formulario de login
   if (!session) {
     return <Auth />;
   }
 
-  // Identifica automáticamente si es Jugador 1 o Jugador 2
   const currentPlayer = session.user.id === PLAYER_1_UID ? 1 : 2;
   const pokemon = selectedDay ? getDailyPokemon(selectedDay) : null;
 
@@ -56,7 +62,7 @@ export default function Home() {
           </p>
         </div>
         <button
-          onClick={() => supabase.auth.signOut()}
+          onClick={handleSignOut}
           className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 px-3 py-2 rounded-lg border border-slate-700 transition cursor-pointer"
         >
           <LogOut size={14} /> Salir
