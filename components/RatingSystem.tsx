@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Pokemon, getPokemonById, getRandomPokemonId } from '@/lib/pokemon';
+import { Pokemon, getDailyPokemon } from '@/lib/pokemon';
 import { Star } from 'lucide-react';
 
 interface RatingSystemProps {
@@ -11,7 +11,6 @@ interface RatingSystemProps {
 }
 
 export default function RatingSystem({ day, currentPlayer }: RatingSystemProps) {
-  const [pokemon, setPokemon] = useState<Pokemon | null>(null);
   const [imitation, setImitation] = useState(0);
   const [movement, setMovement] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -23,8 +22,11 @@ export default function RatingSystem({ day, currentPlayer }: RatingSystemProps) 
     p2_movement: 0,
   });
 
+  // El Pokémon del día se calcula de forma fija y distinta para cada jugador
+  const pokemon: Pokemon = getDailyPokemon(day, currentPlayer);
+
   useEffect(() => {
-    async function loadDayData() {
+    async function loadDayRatings() {
       setLoading(true);
 
       const { data } = await supabase
@@ -33,31 +35,7 @@ export default function RatingSystem({ day, currentPlayer }: RatingSystemProps) 
         .eq('day', day)
         .single();
 
-      let p1PokemonId: number;
-      let p2PokemonId: number;
-
-      // Obtener todos los Pokémon ya usados para evitar duplicados en la medida de lo posible
-      const { data: existingRows } = await supabase.from('ratings').select('p1_pokemon_id, p2_pokemon_id');
-      const usedIds: number[] = [];
-      if (existingRows) {
-        existingRows.forEach((r: any) => {
-          if (r.p1_pokemon_id) usedIds.push(r.p1_pokemon_id);
-          if (r.p2_pokemon_id) usedIds.push(r.p2_pokemon_id);
-        });
-      }
-
       if (data) {
-        p1PokemonId = data.p1_pokemon_id;
-        p2PokemonId = data.p2_pokemon_id;
-
-        // Si por alguna razón antigua faltase alguno
-        if (!p1PokemonId) {
-          p1PokemonId = getRandomPokemonId(usedIds);
-        }
-        if (!p2PokemonId) {
-          p2PokemonId = getRandomPokemonId([...usedIds, p1PokemonId]);
-        }
-
         setRatingsData({
           p1_imitation: data.p1_imitation || 0,
           p1_movement: data.p1_movement || 0,
@@ -68,38 +46,25 @@ export default function RatingSystem({ day, currentPlayer }: RatingSystemProps) 
         if (currentPlayer === 1) {
           setImitation(data.p1_imitation || 0);
           setMovement(data.p1_movement || 0);
-          setPokemon(getPokemonById(p1PokemonId));
         } else {
           setImitation(data.p2_imitation || 0);
           setMovement(data.p2_movement || 0);
-          setPokemon(getPokemonById(p2PokemonId));
         }
       } else {
-        // Crear registro nuevo para este día con Pokémon independientes para cada uno
-        p1PokemonId = getRandomPokemonId(usedIds);
-        p2PokemonId = getRandomPokemonId([...usedIds, p1PokemonId]);
-
+        // Inicializar fila si no existe
         await supabase.from('ratings').upsert({
           day,
-          p1_pokemon_id: p1PokemonId,
-          p2_pokemon_id: p2PokemonId,
           p1_imitation: 0,
           p1_movement: 0,
           p2_imitation: 0,
           p2_movement: 0,
         });
-
-        if (currentPlayer === 1) {
-          setPokemon(getPokemonById(p1PokemonId));
-        } else {
-          setPokemon(getPokemonById(p2PokemonId));
-        }
       }
 
       setLoading(false);
     }
 
-    loadDayData();
+    loadDayRatings();
   }, [day, currentPlayer]);
 
   const handleRate = async (type: 'imitation' | 'movement', value: number) => {
@@ -125,8 +90,8 @@ export default function RatingSystem({ day, currentPlayer }: RatingSystemProps) 
     await supabase.from('ratings').update(updatePayload).eq('day', day);
   };
 
-  if (loading || !pokemon) {
-    return <div className="text-center py-12 text-slate-400">Cargando Pokémon del día {day}...</div>;
+  if (loading) {
+    return <div className="text-center py-12 text-slate-400">Cargando puntuaciones del día {day}...</div>;
   }
 
   const playerName = currentPlayer === 1 ? 'Iván' : 'María';
