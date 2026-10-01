@@ -82,7 +82,7 @@ export default function Home() {
                 className="flex items-center gap-1.5 px-3 py-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/50 rounded-xl text-xs font-medium transition cursor-pointer"
                 title="Reiniciar partida y generar nuevos Pokémon"
               >
-                <RotateCcw size5={14} />
+                <RotateCcw size={14} />
                 Reset Partida
               </button>
             )}
