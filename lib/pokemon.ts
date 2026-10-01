@@ -4,7 +4,6 @@ export interface Pokemon {
   image: string;
 }
 
-// Lista amplia de Pokémon divertidos y menos comunes (incluyendo a Wobbuffet ID 202)
 const UNCOMMON_POKEMON_IDS = [
   202, // Wobbuffet
   137, // Porygon
@@ -73,8 +72,6 @@ const POKEMON_NAMES: Record<number, string> = {
 };
 
 export function getDailyPokemon(day: number, player: number): Pokemon {
-  // Fórmula determinista: el día 1 siempre dará el mismo Pokémon para el jugador 1, 
-  // pero diferente al del jugador 2, y no cambiará nunca al reabrirlo.
   const seed = day * 31 + player * 97;
   const arrayIndex = seed % UNCOMMON_POKEMON_IDS.length;
   
@@ -87,4 +84,14 @@ export function getDailyPokemon(day: number, player: number): Pokemon {
     name,
     image,
   };
+}
+
+// Función auxiliar que el componente Calendar.tsx estaba buscando
+export function getCurrentDayOfDecember(): number {
+  const now = new Date();
+  // Si estamos en diciembre, devuelve el día actual, o un valor por defecto (ej. 1) si no
+  if (now.getMonth() === 11) {
+    return now.getDate();
+  }
+  return 31; // Permite ver todos los días fuera de diciembre para probar
 }
