@@ -26,7 +26,6 @@ export default function Home() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setLoading(false);
-      // Al cambiar de sesión o iniciar sesión, aseguramos volver al menú principal
       setSelectedDay(null);
     });
 
@@ -58,7 +57,7 @@ export default function Home() {
   }
 
   const handleReset = async () => {
-    if (confirm('¿Seguro que quieres reiniciar todas las puntuaciones y generar nuevos Pokémon para todos los días?')) {
+    if (confirm('¿Seguro que quieres reiniciar todas las puntuaciones?')) {
       await supabase.from('ratings').delete().neq('day', 0);
       window.location.reload();
     }
@@ -67,7 +66,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 text-white p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        {/* Cabecera (El botón Reset solo aparece aquí) */}
+        {/* Cabecera */}
         <header className="flex flex-col sm:flex-row justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 gap-4 shadow-lg">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center font-black text-slate-950 text-xl shadow">
@@ -82,14 +81,17 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-1.5 px-3 py-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/50 rounded-xl text-xs font-medium transition cursor-pointer"
-              title="Reiniciar partida y generar nuevos Pokémon"
-            >
-              <RotateCcw size={14} />
-              Reset Partida
-            </button>
+            {/* El botón de Reset solo se muestra cuando estás en el menú principal (selectedDay === null) */}
+            {selectedDay === null && (
+              <button
+                onClick={handleReset}
+                className="flex items-center gap-1.5 px-3 py-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/50 rounded-xl text-xs font-medium transition cursor-pointer"
+                title="Reiniciar todas las puntuaciones"
+              >
+                <RotateCcw size={14} />
+                Reset Partida
+              </button>
+            )}
 
             <button
               onClick={() => supabase.auth.signOut()}
