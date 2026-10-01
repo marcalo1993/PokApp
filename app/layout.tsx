@@ -23,10 +23,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
-        <link rel="icon" href="/arca-192.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/arca-192.png" />
-      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
