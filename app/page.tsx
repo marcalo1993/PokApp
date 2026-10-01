@@ -41,12 +41,14 @@ export default function Home() {
     return <Auth />;
   }
 
-  const userEmail = session.user.email?.toLowerCase() || '';
+  const userEmail = session.user.email?.toLowerCase().trim() || '';
 
-  // Detección limpia basada en el correo electrónico
+  // Asignación estricta y directa por correo electrónico
   let currentPlayer = 1; // Por defecto Iván
-  if (userEmail.includes('maria')) {
-    currentPlayer = 2; // Si el email contiene "maria", es la jugadora 2
+  if (userEmail === 'marcos.alo1993@gmail.com') {
+    currentPlayer = 2; // Marcos/María es el Jugador 2
+  } else if (userEmail === 'ivan.navi93@gmail.com' || userEmail.includes('ivan')) {
+    currentPlayer = 1; // Iván es el Jugador 1
   }
 
   const handleReset = async () => {
@@ -80,7 +82,7 @@ export default function Home() {
                 className="flex items-center gap-1.5 px-3 py-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/50 rounded-xl text-xs font-medium transition cursor-pointer"
                 title="Reiniciar partida y generar nuevos Pokémon"
               >
-                <RotateCcw size={14} />
+                <RotateCcw size5={14} />
                 Reset Partida
               </button>
             )}
